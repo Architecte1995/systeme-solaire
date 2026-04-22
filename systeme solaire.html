@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Cathédrale 1995 — Système Solaire</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body {
+  width:100%; height:100%;
+  background:#020205;
+  color:#e0e0e0;
+  font-family:'Segoe UI',Roboto,sans-serif;
+  overflow:hidden; touch-action:none;
+}
+#header {
+  position:absolute; top:0; left:0; right:0;
+  background:rgba(2,2,5,0.88);
+  border-bottom:1px solid rgba(201,162,39,0.22);
+  padding:5px 10px; text-align:center;
+  font-size:0.68rem; color:#777; letter-spacing:0.4px;
+  z-index:30; backdrop-filter:blur(4px);
+}
+#header b { color:#C9A227; font-weight:600; }
+#dateDisplay {
+  position:absolute; top:50px; left:0; right:0; text-align:center;
+  font-size:0.72rem; color:#aaa; z-index:20; pointer-events:none;
+}
+#dateDisplay span {
+  background:rgba(0,0,0,0.6); padding:3px 10px; border-radius:10px;
+  border:1px solid rgba(201,162,39,0.2);
+}
+canvas { display:block; touch-action:none; }
+#ui {
+  position:absolute; bottom:0; left:0; right:0;
+  background:linear-gradient(to top, rgba(2,2,5,0.95), transparent);
+  padding:10px 6px 22px; pointer-events:none; z-index:20;
+}
+#ui .row {
+  display:flex; gap:5px; justify-content:center;
+  pointer-events:auto; flex-wrap:wrap;
+}
+.btn {
+  background:rgba(201,162,39,0.12); border:1px solid rgba(201,162,39,0.35);
+  color:#C9A227; padding:6px 11px; border-radius:16px;
+  font-size:0.72rem; cursor:pointer; backdrop-filter:blur(4px);
+  transition:all 0.2s; user-select:none; -webkit-tap-highlight-color:transparent;
+}
+.btn:active { background:rgba(201,162,39,0.3); transform:scale(0.95); }
+.btn.on { background:rgba(201,162,39,0.4); border-color:#C9A227; }
+#info {
+  position:absolute; top:72px; left:10px; right:10px;
+  text-align:center; pointer-events:none; z-index:20;
+  opacity:0; transition:opacity 0.3s;
+}
+#info.show { opacity:1; }
+#info span {
+  background:rgba(0,0,0,0.75); padding:5px 12px; border-radius:14px;
+  font-size:0.78rem; color:#fff; border:1px solid rgba(201,162,39,0.25);
+  backdrop-filter:blur(4px);
+}
+#card {
+  position:absolute; background:rgba(8,8,12,0.94);
+  border:1px solid rgba(201,162,39,0.45); border-radius:12px;
+  padding:12px 16px; font-size:0.78rem; line-height:1.6; color:#ddd;
+  backdrop-filter:blur(8px); z-index:25; display:none;
+  min-width:180px; max-width:260px; box-shadow:0 4px 20px rgba(0,0,0,0.6);
+}
+#card .title { color:#C9A227; font-weight:bold; font-size:0.85rem; margin-bottom:6px; border-bottom:1px solid rgba(201,162,39,0.25); padding-bottom:4px; }
+#card .kv { display:flex; justify-content:space-between; gap:12px; }
+#card .k { color:#888; } #card .v { color:#fff; font-family:monospace; }
+#card .close { position:absolute; top:6px; right:10px; color:#666; font-size:1rem; cursor:pointer; }
+#speedSlider {
+  -webkit-appearance:none; width:120px; height:4px; background:#333; border-radius:2px; outline:none;
+}
+#speedSlider::-webkit-slider-thumb {
+  -webkit-appearance:none; width:14px; height:14px; background:#C9A227; border-radius:50%; cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <b>Cathédrale 1995</b> — © 2026 Architecte1995 & Kimi K 2.6 | MIT License
+</div>
+<div id="dateDisplay"><span id="dateText">—</span></div>
+
+<div id="info"><span id="infoText">—</span></div>
+
+<div id="card">
+  <div class="close" onclick="hideCard()">×</div>
+  <div class="title" id="cardTitle">—</div>
+  <div id="cardBody"></div>
+</div>
+
+<canvas id="c"></canvas>
+
+<div id="ui">
+  <div class="row">
+    <button class="btn" onclick="zoomAt(1.4)">+</button>
+    <button class="btn" onclick="zoomAt(0.7)">−</button>
+    <button class="btn" onclick="resetView()">Reset</button>
+    <button class="btn" id="btnPlay" onclick="togglePlay()">Pause</button>
+    <button class="btn" id="btnTrace" onclick="toggleTraces()">Traces</button>
+    <button class="btn" id="btnMode" onclick="cycleMode()">Distance</button>
+    <button class="btn" id="btnRelier" onclick="toggleRelier()">Relier</button>
+    <button class="btn" onclick="setToday()">Aujourd'hui</button>
+  </div>
+  <div class="row" style="margin-top:6px;">
+    <span style="color:#666;font-size:0.65rem;">Vitesse</span>
+    <input type="range" id="speedSlider" min="0" max="6" step="1" value="3" oninput="setSpeed(this.value)">
+    <span id="speedLabel" style="color:#C9A227;font-size:0.65rem;width:40px;">×100</span>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const dateText = document.getElementById('dateText');
+const info = document.getElementById('info');
+const infoText = document.getElementById('infoText');
+const card = document.getElementById('card');
+const cardTitle = document.getElementById('cardTitle');
+const cardBody = document.getElementById('cardBody');
+const btnPlay = document.getElementById('btnPlay');
+const btnTrace = document.getElementById('btnTrace');
+const btnMode = document.getElementById('btnMode');
+const btnRelier = document.getElementById('btnRelier');
+const speedLabel = document.getElementById('speedLabel');
+
+let W, H, CX, CY;
+let scale = 80;
+let panX = 0, panY = 0;
+let isDragging = false, lastX = 0, lastY = 0;
+let tapStart = 0, lastTap = 0;
+let needsRender = true;
+
+let simDate = new Date();
+let speedFactor = 100;
+let isPlaying = true;
+let showTraces = false;
+let mode = 'distance';
+let relierMode = false;
+let selectedA = null;
+let traces = [];
+
+const UA_KM = 149597870.7;
+const DAY_MS = 86400000;
+const J2000 = new Date('2000-01-01T12:00:00Z');
+const TWO_PI = 2 * Math.PI;
+
+function jd(d) { return (d.getTime() - J2000.getTime()) / DAY_MS; }
+
+function mod2pi(x) {
+  return ((x % TWO_PI) + TWO_PI) % TWO_PI;
+}
+
+const PLANETS = [
+  {n:'Soleil',t:'sun',a:0,e:0,T:1,M0:0,r:696340,c:'#FDB813',glow:'#FFD700',moons:[]},
+  {n:'Mercure',t:'telluric',a:0.387,e:0.206,T:87.97,M0:3.50,r:2439,c:'#A5A5A5',glow:'#CCCCCC',moons:[]},
+  {n:'Vénus',t:'telluric',a:0.723,e:0.007,T:224.70,M0:2.20,r:6051,c:'#E3BB76',glow:'#F4D03F',moons:[]},
+  {n:'Terre',t:'telluric',a:1.000,e:0.017,T:365.25,M0:6.00,r:6371,c:'#6B93D6',glow:'#85C1E9',moons:[
+    {n:'Lune',r:1737,orb:384400,T:27.32,c:'#C0C0C0',glow:'#E0E0E0'}
+  ]},
+  {n:'Mars',t:'telluric',a:1.524,e:0.093,T:686.98,M0:3.00,r:3389,c:'#C1440E',glow:'#E74C3C',moons:[
+    {n:'Phobos',r:11,orb:9377,T:0.32,c:'#BBBBBB',glow:'#DDDDDD'},
+    {n:'Deimos',r:6,orb:23463,T:1.26,c:'#999999',glow:'#BBBBBB'}
+  ]},
+  {n:'Jupiter',t:'gas',a:5.204,e:0.049,T:4332.59,M0:1.30,r:69911,c:'#D8CA9D',glow:'#F5E6A3',moons:[
+    {n:'Io',r:1821,orb:421700,T:1.77,c:'#E6A817',glow:'#FAD02C'},
+    {n:'Europe',r:1560,orb:671000,T:3.55,c:'#B8CCE6',glow:'#D6EAF8'},
+    {n:'Ganymède',r:2634,orb:1070400,T:7.15,c:'#9E8B7D',glow:'#C0B0A0'},
+    {n:'Callisto',r:2410,orb:1882700,T:16.69,c:'#7D7068',glow:'#A09080'}
+  ]},
+  {n:'Saturne',t:'gas',a:9.582,e:0.056,T:10759.22,M0:2.50,r:58232,c:'#EAD6B8',glow:'#FFF5E1',rings:true,moons:[
+    {n:'Mimas',r:198,orb:185539,T:0.94,c:'#CCCCCC',glow:'#EEEEEE'},
+    {n:'Encelade',r:252,orb:238020,T:1.37,c:'#F0F8FF',glow:'#FFFFFF'},
+    {n:'Téthys',r:531,orb:294619,T:1.89,c:'#DDDDDD',glow:'#F0F0F0'},
+    {n:'Dioné',r:561,orb:377396,T:2.74,c:'#CCCCCC',glow:'#E8E8E8'},
+    {n:'Rhéa',r:764,orb:527108,T:4.52,c:'#BBBBBB',glow:'#DDDDDD'},
+    {n:'Titan',r:2574,orb:1221870,T:15.95,c:'#D4A76A',glow:'#E8C995'},
+    {n:'Japet',r:734,orb:3560820,T:79.33,c:'#888888',glow:'#AAAAAA'}
+  ]},
+  {n:'Uranus',t:'ice',a:19.20,e:0.046,T:30687.15,M0:5.00,r:25362,c:'#D1E7E7',glow:'#E8F6F3',moons:[
+    {n:'Miranda',r:236,orb:129390,T:1.41,c:'#CCCCCC',glow:'#EEEEEE'},
+    {n:'Ariel',r:579,orb:190900,T:2.52,c:'#CCCCCC',glow:'#EEEEEE'},
+    {n:'Umbriel',r:585,orb:266000,T:4.14,c:'#999999',glow:'#BBBBBB'},
+    {n:'Titania',r:789,orb:435840,T:8.71,c:'#BBBBBB',glow:'#DDDDDD'},
+    {n:'Obéron',r:761,orb:583520,T:13.46,c:'#AAAAAA',glow:'#CCCCCC'}
+  ]},
+  {n:'Neptune',t:'ice',a:30.05,e:0.010,T:60190.03,M0:4.00,r:24622,c:'#5B5DDF',glow:'#8888FF',moons:[
+    {n:'Triton',r:1353,orb:354759,T:-5.88,c:'#C9B8A8',glow:'#E0D0C0'},
+    {n:'Protée',r:210,orb:117647,T:1.12,c:'#888888',glow:'#AAAAAA'},
+    {n:'Néréide',r:170,orb:5513818,T:360.14,c:'#777777',glow:'#999999'}
+  ]},
+  {n:'Pluton',t:'dwarf',a:39.48,e:0.249,T:90560,M0:3.00,r:1188,c:'#BDC0BA',glow:'#D8D8D0',moons:[
+    {n:'Charon',r:606,orb:19591,T:6.39,c:'#A0A0A0',glow:'#C0C0C0'}
+  ]}
+];
+
+const KUIPER = [];
+for(let i=0;i<50;i++){
+  const a = 30 + Math.random()*25;
+  const theta = Math.random()*Math.PI*2;
+  KUIPER.push({a,theta,r:Math.random()*2+1,c:'rgba(200,160,200,0.2)'});
+}
+
+function resize(){
+  W=canvas.width=window.innerWidth; H=canvas.height=window.innerHeight;
+  CX=W/2; CY=H/2; needsRender=true;
+}
+window.addEventListener('resize',resize);
+
+function solveKepler(a,e,T,M0,t){
+  const n = TWO_PI/T;
+  const M = mod2pi(M0 + n*t);
+  let E = M;
+  for(let i=0;i<20;i++){
+    const sinE = Math.sin(E);
+    const cosE = Math.cos(E);
+    const f = E - e*sinE - M;
+    const fp = 1 - e*cosE;
+    const dE = f / fp;
+    E -= dE;
+    if(Math.abs(dE) < 1e-10) break;
+  }
+  const theta = 2*Math.atan2(Math.sqrt(1+e)*Math.sin(E/2), Math.sqrt(1-e)*Math.cos(E/2));
+  const r = a*(1 - e*Math.cos(E));
+  return {r,theta};
+}
+
+function getBodyPos(p){
+  const t = jd(simDate);
+  if(p.t==='sun') return {x:0,y:0};
+  const k = solveKepler(p.a,p.e,p.T,p.M0,t);
+  return {x:k.r*Math.cos(k.theta), y:k.r*Math.sin(k.theta)};
+}
+
+function getMoonPos(parentPos,moon,planet){
+  const t = jd(simDate);
+  const angle = mod2pi(TWO_PI*(t/moon.T) + planet.M0);
+  const orbUA = moon.orb / UA_KM;
+  return {
+    x: parentPos.x + orbUA*Math.cos(angle),
+    y: parentPos.y + orbUA*Math.sin(angle)
+  };
+}
+
+function displayRadius(real_km,type){
+  const rUA = real_km / UA_KM;
+  let ex = 1;
+  if(type==='sun') ex = 40;
+  else if(type==='gas') ex = 250;
+  else if(type==='telluric') ex = 900;
+  else if(type==='ice') ex = 500;
+  else if(type==='dwarf') ex = 1200;
+  else if(type==='moon') ex = 3500;
+
+  let r = rUA * scale * ex;
+  if(r < 1.5) r = 1.5;
+  if(type==='sun' && r > 28) r = 28;
+  if(type==='moon') {
+    if(r < 2.5) r = 2.5;
+    if(r > 5) r = 5;
+  }
+  return r;
+}
+
+function toScreen(x,y){
+  if(mode==='size') return {x:0,y:0};
+  if(mode==='log'){
+    const d = Math.sqrt(x*x+y*y);
+    const ang = Math.atan2(y,x);
+    const dlog = Math.log10(d+0.1)*80 + 40;
+    return {x:CX + (dlog*Math.cos(ang) + panX)*scale/80, y:CY + (dlog*Math.sin(ang) + panY)*scale/80};
+  }
+  return {x:CX + (x*scale + panX), y:CY + (y*scale + panY)};
+}
+
+function draw(){
+  if(!needsRender) return;
+  needsRender = false;
+  ctx.fillStyle='#020205'; ctx.fillRect(0,0,W,H);
+
+  if(mode==='size'){ drawSizeMode(); return; }
+
+  ctx.fillStyle='rgba(255,255,255,0.04)';
+  for(let i=0;i<80;i++){
+    const sx=(i*137.5)%W;
+    const sy=(i*71.3)%H;
+    ctx.fillRect(sx,sy,1,1);
+  }
+
+  ctx.strokeStyle='rgba(201,162,39,0.08)';
+  ctx.lineWidth=1;
+  for(let p of PLANETS){
+    if(p.t==='sun') continue;
+    ctx.beginPath();
+    for(let i=0;i<=200;i++){
+      const th = (i/200)*Math.PI*2;
+      const r = p.a*(1-p.e*p.e)/(1+p.e*Math.cos(th));
+      const s = toScreen(r*Math.cos(th), r*Math.sin(th));
+      if(i===0) ctx.moveTo(s.x,s.y); else ctx.lineTo(s.x,s.y);
+    }
+    ctx.stroke();
+  }
+
+  for(let k of KUIPER){
+    const s = toScreen(k.a*Math.cos(k.theta), k.a*Math.sin(k.theta));
+    ctx.fillStyle=k.c;
+    ctx.beginPath(); ctx.arc(s.x,s.y,1,0,Math.PI*2); ctx.fill();
+  }
+
+  if(showTraces && traces.length>0){
+    for(let tr of traces){
+      ctx.fillStyle = tr.c;
+      ctx.globalAlpha = 0.25;
+      ctx.beginPath(); ctx.arc(tr.x,tr.y,1.2,0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  for(let p of PLANETS){
+    const pos = getBodyPos(p);
+    const s = toScreen(pos.x, pos.y);
+    const r = displayRadius(p.r, p.t);
+
+    ctx.shadowBlur = r*2.5;
+    ctx.shadowColor = p.glow;
+    ctx.fillStyle = p.c;
+    ctx.beginPath(); ctx.arc(s.x,s.y,r,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+
+    if(p.t==='sun'){
+      const grad = ctx.createRadialGradient(s.x,s.y,r,s.x,s.y,r*4);
+      grad.addColorStop(0,'rgba(253,184,19,0.15)');
+      grad.addColorStop(1,'rgba(253,184,19,0)');
+      ctx.fillStyle=grad;
+      ctx.beginPath(); ctx.arc(s.x,s.y,r*4,0,Math.PI*2); ctx.fill();
+    }
+
+    if(p.rings){
+      ctx.save();
+      ctx.translate(s.x,s.y);
+      ctx.rotate(Math.PI/6);
+      ctx.strokeStyle='rgba(234,214,184,0.35)';
+      ctx.lineWidth=1.5;
+      ctx.beginPath();
+      ctx.ellipse(0,0,r*2.2,r*1.1,0,0,Math.PI*2);
+      ctx.stroke();
+      ctx.strokeStyle='rgba(234,214,184,0.2)';
+      ctx.lineWidth=0.8;
+      ctx.beginPath();
+      ctx.ellipse(0,0,r*2.6,r*1.3,0,0,Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    if(p.moons.length>0 && scale < 150 && p.t !== 'sun'){
+      ctx.strokeStyle='rgba(200,200,200,0.12)';
+      ctx.lineWidth=1;
+      ctx.beginPath(); ctx.arc(s.x,s.y,r*2.5,0,Math.PI*2); ctx.stroke();
+    }
+
+    if(scale > 120){
+      for(let m of p.moons){
+        const mp = getMoonPos(pos,m,p);
+        const ms = toScreen(mp.x, mp.y);
+        const mr = displayRadius(m.r,'moon');
+        // Orbite lunaire (seulement si assez grande pour être visible)
+        const orbPx = (m.orb / UA_KM) * scale;
+        if(orbPx > 4){
+          ctx.strokeStyle='rgba(200,200,200,0.08)';
+          ctx.lineWidth=0.6;
+          ctx.beginPath();
+          ctx.ellipse(s.x,s.y,orbPx,orbPx,0,0,Math.PI*2);
+          ctx.stroke();
+        }
+        // Lune
+        ctx.shadowBlur = mr*2;
+        ctx.shadowColor = m.glow;
+        ctx.fillStyle = m.c;
+        ctx.beginPath(); ctx.arc(ms.x,ms.y,mr,0,Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    if(r > 4){
+      ctx.fillStyle='rgba(255,255,255,0.6)';
+      ctx.font='10px sans-serif';
+      ctx.textAlign='center';
+      ctx.fillText(p.n, s.x, s.y + r + 12);
+    }
+  }
+
+  if(selectedA){
+    const s = toScreen(selectedA.x, selectedA.y);
+    ctx.strokeStyle='#C9A227';
+    ctx.lineWidth=2;
+    ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.arc(s.x,s.y,14+Math.sin(Date.now()/200)*4,0,Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+function drawSizeMode(){
+  ctx.fillStyle='#020205'; ctx.fillRect(0,0,W,H);
+  let x = 40;
+  const y = CY;
+  const maxR = 696340;
+  const scaleSize = Math.min(W/(PLANETS.length*3), 80);
+
+  for(let p of PLANETS){
+    const r = (p.r/maxR)*scaleSize*2;
+    const rs = Math.max(r, 3);
+    ctx.shadowBlur = rs*2; ctx.shadowColor = p.glow;
+    ctx.fillStyle = p.c;
+    ctx.beginPath(); ctx.arc(x, y, rs, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+
+    if(p.moons.length>0){
+      let mx = x - (p.moons.length-1)*12;
+      for(let m of p.moons){
+        const mr = Math.max((m.r/maxR)*scaleSize*2, 2);
+        ctx.fillStyle = m.c;
+        ctx.beginPath(); ctx.arc(mx, y + rs + 20, mr, 0, Math.PI*2); ctx.fill();
+        mx += 24;
+      }
+    }
+
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.font='10px sans-serif'; ctx.textAlign='center';
+    ctx.fillText(p.n, x, y + rs + 40);
+    x += Math.max(rs*3, 50);
+  }
+
+  ctx.strokeStyle='rgba(201,162,39,0.3)';
+  ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(20, H-40); ctx.lineTo(W-20, H-40); ctx.stroke();
+  ctx.fillStyle='#C9A227'; ctx.font='10px sans-serif';
+  ctx.fillText('Échelle relative des diamètres (Soleil = 100%)', 20, H-20);
+}
+
+function loop(){
+  if(isPlaying){
+    simDate = new Date(simDate.getTime() + speedFactor * DAY_MS / 60);
+    updateDateText();
+    if(showTraces && Math.random()<0.3) recordTraces();
+  }
+  needsRender = true;
+  draw();
+  requestAnimationFrame(loop);
+}
+
+function updateDateText(){
+  const d = simDate;
+  const s = d.toLocaleDateString('fr-FR',{year:'numeric',month:'short',day:'numeric'});
+  dateText.textContent = s + (speedFactor>=1000 ? ' (accéléré)' : '');
+}
+
+function recordTraces(){
+  for(let p of PLANETS){
+    if(p.t==='sun') continue;
+    const pos = getBodyPos(p);
+    const s = toScreen(pos.x, pos.y);
+    if(s.x>0 && s.x<W && s.y>0 && s.y<H){
+      traces.push({x:s.x,y:s.y,c:p.c});
+    }
+  }
+  if(traces.length>5000) traces = traces.slice(-4000);
+}
+
+function zoomAt(factor,cx,cy){
+  const px=cx??W/2, py=cy??H/2;
+  const wx=(px-CX-panX)/scale, wy=(py-CY-panY)/scale;
+  scale*=factor; panX=px-CX-wx*scale; panY=py-CY-wy*scale; needsRender=true;
+}
+function resetView(){
+  scale=mode==='size'?1:80; panX=0; panY=0; hideCard(); needsRender=true;
+}
+function togglePlay(){ isPlaying=!isPlaying; btnPlay.textContent=isPlaying?'Pause':'Play'; }
+function toggleTraces(){ showTraces=!showTraces; btnTrace.classList.toggle('on',showTraces); if(!showTraces) traces=[]; needsRender=true; }
+function cycleMode(){
+  const modes=['distance','log','size'];
+  const idx=(modes.indexOf(mode)+1)%modes.length;
+  mode=modes[idx];
+  btnMode.textContent=mode==='distance'?'Distance':mode==='log'?'Log':'Taille';
+  resetView();
+}
+function setSpeed(v){
+  const vals=[0,1,10,100,1000,10000,100000];
+  speedFactor=vals[parseInt(v)];
+  speedLabel.textContent='×'+speedFactor;
+  if(speedFactor===0){ isPlaying=false; btnPlay.textContent='Play'; }
+}
+function setToday(){ simDate=new Date(); updateDateText(); needsRender=true; }
+function toggleRelier(){ relierMode=!relierMode; btnRelier.classList.toggle('on',relierMode); if(!relierMode){ selectedA=null; needsRender=true; } }
+
+function screenToWorld(sx,sy){
+  return {x:(sx-CX-panX)/scale, y:(sy-CY-panY)/scale};
+}
+
+function findBody(sx,sy){
+  if(scale > 120){
+    for(let p of PLANETS){
+      if(p.moons.length === 0) continue;
+      const pos = getBodyPos(p);
+      for(let m of p.moons){
+        const mp = getMoonPos(pos,m,p);
+        const ms = toScreen(mp.x,mp.y);
+        const mr = displayRadius(m.r,'moon') + 8;
+        if((sx-ms.x)**2 + (sy-ms.y)**2 < mr*mr){
+          return {type:'moon',obj:m,parent:p,pos:mp};
+        }
+      }
+    }
+  }
+
+  for(let p of PLANETS){
+    const pos=getBodyPos(p);
+    const s=toScreen(pos.x,pos.y);
+    const r=displayRadius(p.r,p.t)+10;
+    if((sx-s.x)**2+(sy-s.y)**2 < r*r) return {type:'planet',obj:p,pos};
+  }
+  return null;
+}
+
+function showCard(title,html){
+  cardTitle.textContent=title; cardBody.innerHTML=html;
+  card.style.left='10px'; card.style.top='75px';
+  card.style.display='block';
+}
+function hideCard(){ card.style.display='none'; selectedA=null; needsRender=true; }
+
+function buildInfo(hit){
+  if(hit.type==='planet'){
+    const p=hit.obj;
+    let s=`<div class="kv"><span class="k">Type</span><span class="v">${p.t}</span></div>`;
+    s+=`<div class="kv"><span class="k">Diamètre</span><span class="v">${(p.r*2).toLocaleString()} km</span></div>`;
+    if(p.a > 0) {
+      s+=`<div class="kv"><span class="k">Distance</span><span class="v">${p.a.toFixed(2)} UA</span></div>`;
+      s+=`<div class="kv"><span class="k">Période</span><span class="v">${p.T.toLocaleString()} j</span></div>`;
+      s+=`<div class="kv"><span class="k">Excentricité</span><span class="v">${p.e.toFixed(3)}</span></div>`;
+    }
+    if(p.moons.length > 0) {
+      s+=`<div class="kv"><span class="k">Satellites</span><span class="v">${p.moons.length}</span></div>`;
+    }
+    return s;
+  } else {
+    const m=hit.obj, p=hit.parent;
+    let s=`<div class="kv"><span class="k">Planète</span><span class="v">${p.n}</span></div>`;
+    s+=`<div class="kv"><span class="k">Diamètre</span><span class="v">${(m.r*2).toLocaleString()} km</span></div>`;
+    s+=`<div class="kv"><span class="k">Distance</span><span class="v">${m.orb.toLocaleString()} km</span></div>`;
+    s+=`<div class="kv"><span class="k">Période</span><span class="v">${Math.abs(m.T).toFixed(2)} j</span></div>`;
+    return s;
+  }
+}
+
+function buildCompare(a,b){
+  const pa=a.obj, pb=b.obj;
+  const da=pa.r*2, db=pb.r*2;
+  const ratio = da/db;
+  let s=`<div class="kv"><span class="k">Rapport Ø</span><span class="v">${ratio.toFixed(2)}</span></div>`;
+  if(pa.a && pb.a) s+=`<div class="kv"><span class="k">Rapport dist.</span><span class="v">${(pa.a/pb.a).toFixed(2)}</span></div>`;
+  if(pa.T && pb.T) s+=`<div class="kv"><span class="k">Rapport période</span><span class="v">${(pa.T/pb.T).toFixed(2)}</span></div>`;
+  return s;
+}
+
+canvas.addEventListener('pointerdown',e=>{
+  isDragging=true; lastX=e.clientX; lastY=e.clientY; tapStart=Date.now();
+});
+canvas.addEventListener('pointermove',e=>{
+  if(!isDragging) return;
+  panX+=e.clientX-lastX; panY+=e.clientY-lastY;
+  lastX=e.clientX; lastY=e.clientY; needsRender=true;
+});
+canvas.addEventListener('pointerup',e=>{
+  isDragging=false;
+  const dt=Date.now()-tapStart;
+  const moved=Math.abs(e.clientX-lastX)+Math.abs(e.clientY-lastY);
+  if(dt<300 && moved<8){
+    const now=Date.now();
+    const hit=findBody(e.clientX,e.clientY);
+
+    if(relierMode && hit){
+      if(!selectedA){ selectedA=hit; needsRender=true; }
+      else {
+        if(selectedA.obj.n!==hit.obj.n){
+          showCard(`Pont ${selectedA.obj.n} → ${hit.obj.n}`, buildCompare(selectedA,hit));
+        }
+        selectedA=null; needsRender=true;
+      }
+      return;
+    }
+
+    if(hit){
+      showCard(hit.obj.n, buildInfo(hit));
+      infoText.textContent=hit.type==='planet'?hit.obj.n:hit.obj.n+' ('+hit.parent.n+')';
+      info.classList.add('show');
+      clearTimeout(info._t); info._t=setTimeout(()=>info.classList.remove('show'),3000);
+      return;
+    }
+
+    if(now-lastTap<350) zoomAt(2.2,e.clientX,e.clientY);
+    lastTap=now;
+  }
+});
+canvas.addEventListener('wheel',e=>{e.preventDefault(); zoomAt(e.deltaY<0?1.15:0.87,e.clientX,e.clientY);},{passive:false});
+
+let pinchDist=0;
+canvas.addEventListener('touchstart',e=>{
+  if(e.touches.length===2){
+    pinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+  }
+},{passive:false});
+canvas.addEventListener('touchmove',e=>{
+  if(e.touches.length===2){
+    e.preventDefault();
+    const dist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    if(pinchDist>0){
+      zoomAt(dist/pinchDist,(e.touches[0].clientX+e.touches[1].clientX)/2,(e.touches[0].clientY+e.touches[1].clientY)/2);
+      pinchDist=dist;
+    }
+  }
+},{passive:false});
+
+resize();
+resetView();
+updateDateText();
+loop();
+</script>
+</body>
+</html>
