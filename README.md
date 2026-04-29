@@ -1,33 +1,38 @@
-# systeme-solaire
+# Système Solaire v1
 
-Petite page HTML 5 permettant de modéliser les orbites des principaux astres du système solaire. La fonction Traces permet de faire des petits dessins avec zoom / dezoom. Outil pédagogique / artistique.
+Interactive solar system simulator with real orbital mechanics.
 
-# Cathédrale 1995 — Système Solaire
+## Features
 
-Orrery numérique tactile. Modélisation interactive du Système Solaire (Soleil, 8 planètes, Pluton, 23 lunes principales, ceinture de Kuiper) avec orbites de Kepler en temps réel, modes d'échelle multiples, et fonction artistique Traces.
+- Real planetary data: semi-major axes, eccentricities, periods, radii
+- Kepler equation solver for accurate elliptical orbits
+- 10 planets + 25 moons + Kuiper belt objects
+- 3 view modes: Distance (linear), Log (logarithmic scale), Size (relative diameters)
+- Interactive controls: zoom, pan, time speed (×1 to ×100 000), pause/play
+- Trace paths for orbital visualization
+- Body comparison tool (select two bodies to compare)
+- Touch & mouse support (pinch-zoom, drag, double-tap zoom)
+- Info cards on tap/click with physical data
 
-Digital touch orrery. Interactive model of the Solar System (Sun, 8 planets, Pluto, 23 major moons, Kuiper belt) with real-time Keplerian orbits, multiple scale modes, and the artistic Traces feature.
+## Tech Stack
 
-## Fonctionnalités / Features
+- Pure HTML5 Canvas 2D / CSS3 / Vanilla JavaScript
+- No external libraries or WebGL
+- Mobile-friendly (touch gestures, responsive canvas)
 
-- Modèle physique : orbites elliptiques résolues par la méthode de Kepler (anomalie excentrique), vitesses angulaires variables selon la loi des aires.
-- 23 lunes : Lune, Phobos, Deimos, Io, Europe, Ganymède, Callisto, 7 lunes de Saturne, 5 d'Uranus, 3 de Neptune, Charon — avec périodes orbitales réelles.
-- 3 modes d'échelle : Distance (proportionnelle), Logarithmique, Taille relative.
-- Traces : en accélérant le temps (×1000 à ×100 000) et en activant Traces, les planètes dessinent leurs ellipses orbitales complètes sur le canvas. L'utilisateur peut ensuite déplacer la vue (zoom / pan) pour explorer le dessin obtenu. Fonction pédagogique et artistique.
-- Comparaisons : mode "Relier" pour mesurer les rapports de diamètre, distance et période entre deux corps.
-- Navigation tactile : pinch, drag, double-tap, tap-info.
+## Authors
 
-## Stack
+- **Architecte1995** — concept, astronomical data, architecture
+- **Kimi K 2.6 Thinking** (Moonshot AI) — code generation & refactoring
 
-HTML5 Canvas + JavaScript vanilla. Zéro dépendance. Offline-first. Mobile-first.
+## Integrity
 
-## Auteurs / Authors
+| Property | Value |
+|----------|-------|
+| Version | v1 |
+| SHA-256 | `dde3e00f123dcd3b854f70f2702f4faf61a61aa9d24e97da5289122af61fc0c6` |
+| File size | 22188 bytes |
 
-- Architecte1995 — concept, données, lore
-- Kimi K 2.6 (Moonshot AI) — architecture et implémentation
+## License
 
-## Licence / License
-
-MIT License
-
-© 2026 Architecte1995 & Kimi K 2.6
+MIT License — Copyright (c) 2026 Architecte1995 & Kimi K 2.6 Thinking (Moonshot AI)
